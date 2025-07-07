@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Read & Type - Phase 1 & 2</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f4f9f9;
+      padding: 20px;
+      text-align: center;
+    }
+    a.logo-link img {
+      width: 150px;
+      margin-bottom: 20px;
+    }
+    .controls {
+      margin-bottom: 20px;
+    }
+    .toggle-speech, .toggle-errorless {
+      font-size: 14px;
+      margin-left: 10px;
+    }
+    .word-display .uppercase-word {
+      font-size: 36px;
+      font-weight: bold;
+    }
+    .word-display .lowercase-word {
+      font-size: 18px;
+      color: #666;
+      margin-bottom: 10px;
+    }
+    .initial-letter {
+      font-size: 80px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .initial-letter.incorrect {
+      color: red;
+    }
+    #image {
+      width: 200px;
+      height: 200px;
+      margin-bottom: 10px;
+      object-fit: contain;
+      border: 2px solid #ccc;
+      background: white;
+    }
+    .prompt {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    input[type="text"] {
+      font-size: 24px;
+      padding: 10px;
+      width: 120px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .feedback {
+      font-size: 20px;
+      margin-bottom: 10px;
+      height: 30px;
+    }
+    .symbol-output {
+      margin-top: 10px;
+      font-size: 64px;
+      height: 80px;
+    }
+    #congratsScreen {
+      display: none;
+    }
+    #summaryTable {
+      margin-top: 30px;
+      text-align: left;
+      display: inline-block;
+      background: #fff;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    #summaryTable h3 {
+      margin-top: 0;
+    }
+    #timerDisplay {
+      font-size: 18px;
+      color: #555;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <a href="https://www.talkinginpictures.co.uk" class="logo-link" target="_blank">
+    <img src="https://www.talkinginpictures.co.uk/tip-logo.png" alt="Talking In Pictures Logo">
+  </a>
+
+  <div class="controls">
+    <label class="toggle-speech">
+      <input type="checkbox" id="speechToggle" checked> Enable speech prompts
+    </label>
+    <label class="toggle-errorless">
+      <input type="checkbox" id="errorlessToggle"> Errorless mode
+    </label>
+  </div>
+
+  <div id="gameArea">
+    <div class="word-display" id="wordDisplay">
+      <div class="uppercase-word"></div>
+      <div class="lowercase-word"></div>
+    </div>
+    <div class="initial-letter" id="initialLetter"></div>
+    <img id="image" src="" alt="Word image" />
+    <div class="prompt" id="prompt">&nbsp;</div>
+    <input type="text" id="answer" maxlength="10" autofocus autocomplete="off" />
+    <div class="feedback" id="feedback"></div>
+    <div class="symbol-output" id="symbol"></div>
+    <div id="timerDisplay">Time this round: 0s</div>
+  </div>
+
+  <div id="congratsScreen">
+    <h1>🎉 Congratulations! You've finished the round!</h1>
+    <div id="summaryTable">
+      <h3>Progress Summary</h3>
+      <p id="totalAttempts">Total Attempts: 0</p>
+      <p id="correctAnswers">Correct Answers: 0</p>
+      <p id="accuracy">Accuracy: 0%</p>
+      <p id="roundTime">Round Time: 0s</p>
+    </div>
+    <button onclick="startNextRound()">Start Next Round</button>
+  </div>
+
+  <script>
+    const alphabetRound = [..."abcdefghijklmnopqrstuvwxyz"].map((l, i) => ({
+      word: ["apple","ball","cat","dog","egg","fish","goat","hat","ice","juice","kite","lion","moon","nest","orange","pig","queen","rain","sun","tree","umbrella","van","whale","xylophone","yarn","zebra"][i],
+      letter: l,
+      symbol: ["🍎","🏀","🐱","🐶","🥚","🐟","🐐","🎩","🧊","🧃","🪁","🦁","🌙","🪺","🍊","🐷","👑","🌧️","☀️","🌳","☂️","🚐","🐋","🎼","🧶","🦓"][i]
+    }));
+
+    const threeLetterWords = ["cat", "dog", "sun", "pen", "cup", "box", "man", "fan", "bag", "jam"];
+
+    let validWordList = [];
+    let current = 0;
+    let round = 1;
+    let correctCount = 0;
+    let totalCount = 0;
+    let startTime = 0;
+    let phase = "alphabet";
+
+    const imageEl = document.getElementById("image");
+    const feedbackEl = document.getElementById("feedback");
+    const answerEl = document.getElementById("answer");
+    const symbolEl = document.getElementById("symbol");
+    const uppercaseEl = document.querySelector(".uppercase-word");
+    const lowercaseEl = document.querySelector(".lowercase-word");
+    const initialEl = document.getElementById("initialLetter");
+    const promptEl = document.getElementById("prompt");
+    const speechToggle = document.getElementById("speechToggle");
+    const errorlessToggle = document.getElementById("errorlessToggle");
+    const gameArea = document.getElementById("gameArea");
+    const congratsScreen = document.getElementById("congratsScreen");
+    const summaryAttempts = document.getElementById("totalAttempts");
+    const summaryCorrect = document.getElementById("correctAnswers");
+    const summaryAccuracy = document.getElementById("accuracy");
+    const summaryTime = document.getElementById("roundTime");
+    const timerDisplay = document.getElementById("timerDisplay");
+
+    function speakPrompt(text) {
+      if (!speechToggle.checked) return;
+      const utterance = new SpeechSynthesisUtterance(text);
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function updateDisplays(word, incorrect = false) {
+      uppercaseEl.textContent = word.toUpperCase();
+      lowercaseEl.textContent = word.toLowerCase();
+      initialEl.textContent = word[0].toUpperCase();
+      initialEl.className = incorrect ? 'initial-letter incorrect' : 'initial-letter';
+    }
+
+    function updateSummary() {
+      const acc = totalCount ? Math.round((correctCount / totalCount) * 100) : 0;
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      summaryAttempts.textContent = `Total Attempts: ${totalCount}`;
+      summaryCorrect.textContent = `Correct Answers: ${correctCount}`;
+      summaryAccuracy.textContent = `Accuracy: ${acc}%`;
+      summaryTime.textContent = `Round Time: ${elapsed}s`;
+    }
+
+    function updateTimerDisplay() {
+      const seconds = Math.floor((Date.now() - startTime) / 1000);
+      timerDisplay.textContent = `Time this round: ${seconds}s`;
+    }
+
+    function startTimerLoop() {
+      setInterval(updateTimerDisplay, 1000);
+    }
+
+    async function fetchARASAAC(word) {
+      const url = `https://api.arasaac.org/api/pictograms/en/search/${encodeURIComponent(word)}`;
+      try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (data.length) return `https://static.arasaac.org/pictograms/${data[0]._id}/${data[0]._id}_300.png`;
+      } catch (e) { console.warn(e); }
+      return null;
+    }
+
+    async function preload(words, mode) {
+      validWordList = [];
+      for (const item of words) {
+        const word = typeof item === "string" ? item : item.word;
+        const image = await fetchARASAAC(word);
+        if (image) {
+          validWordList.push({
+            word,
+            letter: word[0],
+            symbol: typeof item === "object" ? item.symbol : '',
+            image
+          });
+        }
+      }
+      const checkReady = setInterval(() => {
+        if (validWordList.length >= words.length) {
+          clearInterval(checkReady);
+          startTime = Date.now();
+          startTimerLoop();
+          loadWord(0);
+        }
+      }, 500);
+    }
+
+    function loadWord(index) {
+      if (index >= validWordList.length) {
+        gameArea.style.display = 'none';
+        congratsScreen.style.display = 'block';
+        updateSummary();
+        return;
+      }
+      const entry = validWordList[index];
+      updateDisplays(entry.word);
+      imageEl.src = entry.image;
+      feedbackEl.textContent = "";
+      symbolEl.textContent = "";
+      promptEl.textContent = phase === "alphabet" ? `What letter does ${entry.word.toUpperCase()} begin with?` : `Type the word:`;
+      answerEl.value = "";
+      speakPrompt(promptEl.textContent);
+    }
+
+    answerEl.addEventListener("input", () => {
+      const entry = validWordList[current];
+      const typed = answerEl.value.toLowerCase();
+      totalCount++;
+
+      if (errorlessToggle.checked && typed !== (phase === "alphabet" ? entry.letter : entry.word)) {
+        answerEl.value = "";
+        return;
+      }
+
+      if ((phase === "alphabet" && typed === entry.letter) || (phase !== "alphabet" && typed === entry.word)) {
+        correctCount++;
+        feedbackEl.textContent = "✅ Well done!";
+        symbolEl.textContent = entry.symbol + " = " + entry.word;
+        setTimeout(() => {
+          current++;
+          loadWord(current);
+        }, 1500);
+      } else {
+        feedbackEl.textContent = "❌ Try again";
+        updateDisplays(entry.word, true);
+      }
+    });
+
+    function startNextRound() {
+      round++;
+      phase = "threeLetter";
+      current = 0;
+      correctCount = 0;
+      totalCount = 0;
+      gameArea.style.display = 'block';
+      congratsScreen.style.display = 'none';
+      preload(threeLetterWords, 'threeLetter');
+    }
+
+    preload([...alphabetRound, ...alphabetRound], 'alphabet');
+  </script>
+</body>
+</html>
