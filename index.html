@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Read & Type - Phase 1 & 2</title>
+  <title>Read & Type - Phase 1, 2 & 3</title>
   <style>
     body {
       font-family: sans-serif;
@@ -120,13 +120,7 @@
 
   <div id="congratsScreen">
     <h1>🎉 Congratulations! You've finished the round!</h1>
-    <div id="summaryTable">
-      <h3>Progress Summary</h3>
-      <p id="totalAttempts">Total Attempts: 0</p>
-      <p id="correctAnswers">Correct Answers: 0</p>
-      <p id="accuracy">Accuracy: 0%</p>
-      <p id="roundTime">Round Time: 0s</p>
-    </div>
+    <div id="summaryTable"></div>
     <button onclick="startNextRound()">Start Next Round</button>
   </div>
 
@@ -136,8 +130,8 @@
       letter: l,
       symbol: ["🍎","🏀","🐱","🐶","🥚","🐟","🐐","🎩","🧊","🧃","🪁","🦁","🌙","🪺","🍊","🐷","👑","🌧️","☀️","🌳","☂️","🚐","🐋","🎼","🧶","🦓"][i]
     }));
-
     const threeLetterWords = ["cat", "dog", "sun", "pen", "cup", "box", "man", "fan", "bag", "jam"];
+    const fourLetterWords = ["frog", "milk", "ship", "book", "lamp", "star", "duck", "nest", "ball", "tree"];
 
     let validWordList = [];
     let current = 0;
@@ -146,6 +140,7 @@
     let totalCount = 0;
     let startTime = 0;
     let phase = "alphabet";
+    let allProgress = [];
 
     const imageEl = document.getElementById("image");
     const feedbackEl = document.getElementById("feedback");
@@ -159,10 +154,7 @@
     const errorlessToggle = document.getElementById("errorlessToggle");
     const gameArea = document.getElementById("gameArea");
     const congratsScreen = document.getElementById("congratsScreen");
-    const summaryAttempts = document.getElementById("totalAttempts");
-    const summaryCorrect = document.getElementById("correctAnswers");
-    const summaryAccuracy = document.getElementById("accuracy");
-    const summaryTime = document.getElementById("roundTime");
+    const summaryTable = document.getElementById("summaryTable");
     const timerDisplay = document.getElementById("timerDisplay");
 
     function speakPrompt(text) {
@@ -182,10 +174,14 @@
     function updateSummary() {
       const acc = totalCount ? Math.round((correctCount / totalCount) * 100) : 0;
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      summaryAttempts.textContent = `Total Attempts: ${totalCount}`;
-      summaryCorrect.textContent = `Correct Answers: ${correctCount}`;
-      summaryAccuracy.textContent = `Accuracy: ${acc}%`;
-      summaryTime.textContent = `Round Time: ${elapsed}s`;
+      allProgress.push({ round, phase, correct: correctCount, total: totalCount, time: elapsed });
+    }
+
+    function showSummaryTable() {
+      summaryTable.innerHTML = '<h3>Progress Summary</h3>' +
+        allProgress.map(r => `
+          <p><strong>Round ${r.round} (${r.phase})</strong><br>
+          Score: ${r.correct}/${r.total} | Accuracy: ${Math.round((r.correct / r.total) * 100)}% | Time: ${r.time}s</p>`).join('');
     }
 
     function updateTimerDisplay() {
@@ -203,7 +199,9 @@
         const resp = await fetch(url);
         const data = await resp.json();
         if (data.length) return `https://static.arasaac.org/pictograms/${data[0]._id}/${data[0]._id}_300.png`;
-      } catch (e) { console.warn(e); }
+      } catch (e) {
+        console.warn(e);
+      }
       return null;
     }
 
@@ -222,7 +220,7 @@
         }
       }
       const checkReady = setInterval(() => {
-        if (validWordList.length >= words.length) {
+        if (validWordList.length >= 10) {
           clearInterval(checkReady);
           startTime = Date.now();
           startTimerLoop();
@@ -232,10 +230,11 @@
     }
 
     function loadWord(index) {
-      if (index >= validWordList.length) {
+      if (index >= 10 || index >= validWordList.length) {
         gameArea.style.display = 'none';
         congratsScreen.style.display = 'block';
         updateSummary();
+        showSummaryTable();
         return;
       }
       const entry = validWordList[index];
@@ -274,13 +273,21 @@
 
     function startNextRound() {
       round++;
-      phase = "threeLetter";
       current = 0;
       correctCount = 0;
       totalCount = 0;
       gameArea.style.display = 'block';
       congratsScreen.style.display = 'none';
-      preload(threeLetterWords, 'threeLetter');
+
+      if (round === 2) {
+        phase = "threeLetter";
+        preload(threeLetterWords, 'threeLetter');
+      } else if (round === 3) {
+        phase = "fourLetter";
+        preload(fourLetterWords, 'fourLetter');
+      } else {
+        alert("Well done! You’ve finished all stages.");
+      }
     }
 
     preload([...alphabetRound, ...alphabetRound], 'alphabet');
