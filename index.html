@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Read & Type - Phase 1, 2 & 3</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Read & Type - Phonics & Word Rounds</title>
   <style>
     body {
       font-family: sans-serif;
@@ -88,19 +88,25 @@
       color: #555;
       margin-top: 10px;
     }
+    button {
+      font-size: 20px;
+      padding: 10px 20px;
+      margin: 15px 10px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <a href="https://www.talkinginpictures.co.uk" class="logo-link" target="_blank">
-    <img src="https://www.talkinginpictures.co.uk/tip-logo.png" alt="Talking In Pictures Logo">
+  <a href="https://www.talkinginpictures.co.uk" class="logo-link" target="_blank" rel="noopener">
+    <img src="https://www.talkinginpictures.co.uk/tip-logo.png" alt="Talking In Pictures Logo" />
   </a>
 
   <div class="controls">
     <label class="toggle-speech">
-      <input type="checkbox" id="speechToggle" checked> Enable speech prompts
+      <input type="checkbox" id="speechToggle" checked /> Enable speech prompts
     </label>
     <label class="toggle-errorless">
-      <input type="checkbox" id="errorlessToggle"> Errorless mode
+      <input type="checkbox" id="errorlessToggle" /> Errorless mode
     </label>
   </div>
 
@@ -125,13 +131,24 @@
   </div>
 
   <script>
+    // Words data sets
     const alphabetRound = [..."abcdefghijklmnopqrstuvwxyz"].map((l, i) => ({
-      word: ["apple","ball","cat","dog","egg","fish","goat","hat","ice","juice","kite","lion","moon","nest","orange","pig","queen","rain","sun","tree","umbrella","van","whale","xylophone","yarn","zebra"][i],
+      word: [
+        "apple","ball","cat","dog","egg","fish","goat","hat","ice","juice",
+        "kite","lion","moon","nest","orange","pig","queen","rain","sun","tree",
+        "umbrella","van","whale","xylophone","yarn","zebra"
+      ][i],
       letter: l,
-      symbol: ["🍎","🏀","🐱","🐶","🥚","🐟","🐐","🎩","🧊","🧃","🪁","🦁","🌙","🪺","🍊","🐷","👑","🌧️","☀️","🌳","☂️","🚐","🐋","🎼","🧶","🦓"][i]
+      symbol: [
+        "🍎","🏀","🐱","🐶","🥚","🐟","🐐","🎩","🧊","🧃",
+        "🪁","🦁","🌙","🪺","🍊","🐷","👑","🌧️","☀️","🌳",
+        "☂️","🚐","🐋","🎼","🧶","🦓"
+      ][i]
     }));
+
     const threeLetterWords = ["cat", "dog", "sun", "pen", "cup", "box", "man", "fan", "bag", "jam"];
     const fourLetterWords = ["frog", "milk", "ship", "book", "lamp", "star", "duck", "nest", "ball", "tree"];
+    const fiveLetterWords = ["apple", "chair", "grape", "plant", "train", "snake", "cloud", "light", "brick", "smile"];
 
     let validWordList = [];
     let current = 0;
@@ -142,6 +159,7 @@
     let phase = "alphabet";
     let allProgress = [];
 
+    // Elements
     const imageEl = document.getElementById("image");
     const feedbackEl = document.getElementById("feedback");
     const answerEl = document.getElementById("answer");
@@ -157,6 +175,7 @@
     const summaryTable = document.getElementById("summaryTable");
     const timerDisplay = document.getElementById("timerDisplay");
 
+    // Speech synthesis for prompt
     function speakPrompt(text) {
       if (!speechToggle.checked) return;
       const utterance = new SpeechSynthesisUtterance(text);
@@ -164,6 +183,7 @@
       window.speechSynthesis.speak(utterance);
     }
 
+    // Update the displayed words and letter
     function updateDisplays(word, incorrect = false) {
       uppercaseEl.textContent = word.toUpperCase();
       lowercaseEl.textContent = word.toLowerCase();
@@ -171,12 +191,14 @@
       initialEl.className = incorrect ? 'initial-letter incorrect' : 'initial-letter';
     }
 
+    // Update summary progress data
     function updateSummary() {
       const acc = totalCount ? Math.round((correctCount / totalCount) * 100) : 0;
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
       allProgress.push({ round, phase, correct: correctCount, total: totalCount, time: elapsed });
     }
 
+    // Display summary table
     function showSummaryTable() {
       summaryTable.innerHTML = '<h3>Progress Summary</h3>' +
         allProgress.map(r => `
@@ -184,15 +206,19 @@
           Score: ${r.correct}/${r.total} | Accuracy: ${Math.round((r.correct / r.total) * 100)}% | Time: ${r.time}s</p>`).join('');
     }
 
+    // Timer display update every second
     function updateTimerDisplay() {
       const seconds = Math.floor((Date.now() - startTime) / 1000);
       timerDisplay.textContent = `Time this round: ${seconds}s`;
     }
 
+    let timerInterval = null;
     function startTimerLoop() {
-      setInterval(updateTimerDisplay, 1000);
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(updateTimerDisplay, 1000);
     }
 
+    // Fetch ARASAAC symbol image for word
     async function fetchARASAAC(word) {
       const url = `https://api.arasaac.org/api/pictograms/en/search/${encodeURIComponent(word)}`;
       try {
@@ -205,6 +231,7 @@
       return null;
     }
 
+    // Preload words with images from ARASAAC
     async function preload(words, mode) {
       validWordList = [];
       for (const item of words) {
@@ -217,18 +244,23 @@
             symbol: typeof item === "object" ? item.symbol : '',
             image
           });
+        } else {
+          // Fallback: no ARASAAC image found, skip or use placeholder
+          // To avoid blocking, include word anyway without image
+          validWordList.push({
+            word,
+            letter: word[0],
+            symbol: typeof item === "object" ? item.symbol : '',
+            image: ""
+          });
         }
       }
-      const checkReady = setInterval(() => {
-        if (validWordList.length >= 10) {
-          clearInterval(checkReady);
-          startTime = Date.now();
-          startTimerLoop();
-          loadWord(0);
-        }
-      }, 500);
+      startTime = Date.now();
+      startTimerLoop();
+      loadWord(0);
     }
 
+    // Load the word/question at current index
     function loadWord(index) {
       if (index >= 10 || index >= validWordList.length) {
         gameArea.style.display = 'none';
@@ -239,7 +271,7 @@
       }
       const entry = validWordList[index];
       updateDisplays(entry.word);
-      imageEl.src = entry.image;
+      imageEl.src = entry.image || "";
       feedbackEl.textContent = "";
       symbolEl.textContent = "";
       promptEl.textContent = phase === "alphabet" ? `What letter does ${entry.word.toUpperCase()} begin with?` : `Type the word:`;
@@ -247,30 +279,47 @@
       speakPrompt(promptEl.textContent);
     }
 
+    // Input event listener with errorless option
     answerEl.addEventListener("input", () => {
       const entry = validWordList[current];
       const typed = answerEl.value.toLowerCase();
-      totalCount++;
 
-      if (errorlessToggle.checked && typed !== (phase === "alphabet" ? entry.letter : entry.word)) {
-        answerEl.value = "";
-        return;
+      // If errorless is on, ignore incorrect inputs by resetting input
+      if (errorlessToggle.checked) {
+        if ((phase === "alphabet" && typed !== entry.letter) && typed !== "") {
+          answerEl.value = "";
+          return;
+        }
+        if (phase !== "alphabet" && typed !== entry.word.slice(0, typed.length)) {
+          answerEl.value = typed.slice(0, typed.length - 1); // remove last char
+          return;
+        }
       }
 
-      if ((phase === "alphabet" && typed === entry.letter) || (phase !== "alphabet" && typed === entry.word)) {
+      // When user input matches expected answer
+      if ((phase === "alphabet" && typed === entry.letter) ||
+          (phase !== "alphabet" && typed === entry.word)) {
         correctCount++;
+        totalCount++;
         feedbackEl.textContent = "✅ Well done!";
         symbolEl.textContent = entry.symbol + " = " + entry.word;
         setTimeout(() => {
           current++;
           loadWord(current);
         }, 1500);
-      } else {
+      } else if (typed.length === (phase === "alphabet" ? 1 : entry.word.length)) {
+        // Incorrect answer when input length matches expected length
+        totalCount++;
         feedbackEl.textContent = "❌ Try again";
         updateDisplays(entry.word, true);
+      } else {
+        // Neutral or partial input, no feedback
+        feedbackEl.textContent = "";
+        updateDisplays(entry.word);
       }
     });
 
+    // Proceed to next round (alphabet → 3-letter → 4-letter → 5-letter)
     function startNextRound() {
       round++;
       current = 0;
@@ -285,11 +334,15 @@
       } else if (round === 3) {
         phase = "fourLetter";
         preload(fourLetterWords, 'fourLetter');
+      } else if (round === 4) {
+        phase = "fiveLetter";
+        preload(fiveLetterWords, 'fiveLetter');
       } else {
         alert("Well done! You’ve finished all stages.");
       }
     }
 
+    // Initialize with alphabet round twice (52 items)
     preload([...alphabetRound, ...alphabetRound], 'alphabet');
   </script>
 </body>
